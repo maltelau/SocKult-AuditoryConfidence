@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+parse_telephone.R
+switchboard
+
+sound_generator.R

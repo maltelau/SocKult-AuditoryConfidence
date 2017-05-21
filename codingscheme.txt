@@ -1,0 +1,46 @@
+^(?!.*?(think|thought|sure|swear|sworn)).*(it|that|this|there)( definitely)? was|is\s|could (be|have been)|might (not)? (be|have been)	to be
+^(?!.*?I saw).*sure	to be sure
+(see(n|ing)?|saw)	to see
+presume(d)?	to presume
+kn[oe]w	to know
+look(ed|s)?	to look
+(think(ing)?|thought)	to think	
+(educated )?guess(ed|ing)?	to guess
+leaning	to lean
+promise	to promise
+say	to say
+mean(t)?	to mean
+miss(ed)?	to miss
+definitely(?!.*( was| is))	definitely
+idea	idea
+coin toss	coin toss
+blink(ed)?	to blink
+(\d|100%|50/50|50|30|percentage|three|zero|fifty/fifty|hundred percent|ninety percent|zero percent|forty-three percent|forty|five)	numbers
+forg[eo]t(ten)?	to forget
+tell	to tell
+(feel(ing)?|felt|gut)	to feel
+reckon	to recon
+remember	to remember
+find	to find
+certain(ty)?	certain
+hard	hard
+catch	to catch
+wild card	wild card
+attention	attention
+reason	reason
+focus(ing)?	to focus
+notice	notice
+liked	to like
+random	random
+clue	clue
+^(?!.*?ter).*bet	bet
+hunch	hunch
+base(d)?	to base
+mind	mind
+(un)?confiden(ce|t)	confident
+cheese	cheese
+faithful(ness)?	faithfull
+positive	positive
+sense	to sense
+sw(ea|o)r(e|n)?	to swear
+

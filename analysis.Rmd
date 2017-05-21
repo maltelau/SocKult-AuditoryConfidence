@@ -1,0 +1,89 @@
+---
+title: "SocKult analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rstan)
+library(rethinking)
+options(mc.cores = 4)
+
+individual <- read.csv("data/individual.csv") %>% mutate(prop = k / n)
+best_individual <- read.csv("data/best_individual.csv")
+group <- read.csv("data/group.csv") %>% mutate(prop = k / n)
+text <- read.csv("data/text_data.csv") %>%
+    right_join(group, by = c("group" = "group_id"))
+
+```
+
+
+``` {r, echo=F}
+mutate(individual, who="Individual") %>%
+    select(-participant) %>%
+    rbind(mutate(group, who="Group")) %>%
+
+    ggplot(aes(intensity, prop, linetype=who)) +
+    geom_line(stat="summary", fun.y=mean) +
+    # geom_ribbon(stat="summary", fun.data=mean_cl_boot, alpha=.3) +
+    # geom_violin(aes(group=group.intensity)) +
+    facet_wrap(~ vowel) +
+    ylim(0, 1) +
+    labs(x = "Stimulus intensity (dB)", y = "Proportion correct answers",
+         title = "Raw data (means per vowel per intensity)")
+
+```
+
+
+
+``` {r stancode, echo=F}
+model.file = "model.stan"
+cat(read_file(model.file))
+```
+
+```{r}
+f <- function(x){ array(as.integer(x), dim = length(x))}
+
+
+full.data <- list(
+    N = nrow(group),
+    N_group = length(unique(group$group)),
+    N_vowel = 4,
+    k_gro = f(group$k),
+    n_gro = f(group$n),
+    k_ind = f(best_individual$k),
+    n_ind = f(best_individual$n),
+    group = group$group_id,
+    intensity = group$intensity,
+    vowel = as.numeric(factor(group$vowel)),
+    local_confidence = text$local_alignment_confidence
+    # predictors
+    # similarity = best_individual$similarity
+    )
+
+```
+
+
+```{r}
+fit.1 <- stan(
+    file = model.file,
+    data = full.data,
+    chains = 1, cores = 1, iter = 1000)
+
+
+```
+
+
+```{r}
+post <- extract.samples(fit.1)
+
+data_frame(group = factor(group$group_id)) %>%
+    mutate(i = 1:n(),
+           collective = purrr::map(i, ~post$collective_benefit[,.x])) %>%
+    unnest(collective) %>%
+    ggplot(aes(collective, colour=group, group=group)) +
+    geom_density() +
+    labs(x = "Collective Benefit", y="Posterior")
+```
+

@@ -53,13 +53,6 @@ plate
 ```
 
 
-## stan code
-
-``` {r stancode, echo=F}
-model.file = "intercept.stan"
-cat(read_file(model.file))
-```
-
 ```{r, echo=F, include=F}
 f <- function(x){ array(as.integer(x), dim = length(x))}
 
@@ -74,62 +67,262 @@ full.data <- list(
     n_ind = f(best_individual$n),
     group = group$group_id,
     intensity = group$intensity,
-    vowel = as.numeric(factor(group$vowel)),
-    local_confidence = scale(text$local_alignment_confidence)[,1]
-    # predictors
-    # similarity = best_individual$similarity
-    )
-
+    vowel = as.numeric(factor(group$vowel))) %>%
+    # add all the predictors, and rescale them
+    c(text %>% select(-group) %>% mutate_all(function(x){scale(x)[,1]}))
 ```
 
 
 ```{r, include=F}
+iter = 2000
+chains = 4
+cores = 4
+
+
 # intercept <- stan(
-#     file = "intercept.stan",
+#     file = "models/intercept.stan",
 #     data = full.data,
-#     chains = 4, cores = 4, iter = 2000,
+#     chains = chains, cores = cores, iter = iter,
 #     init = 0)
 # 
-# save("intercept", file="intercept.model")
+# save("intercept", file="models/intercept.model")
 
 
 # conf_align_local <- stan(
-#     file = "conf_align_local.stan",
+#     file = "models/conf_align_local.stan",
 #     data = full.data,
-#     chains = 4, cores = 4, iter = 10000,
+#     chains = chains, cores = cores, iter = iter,
 #     init = 0)
 # 
-# save("conf_align_local", file="conf_align_local.model")
+# save("conf_align_local", file="models/conf_align_local.model")
 
-indiscriminate_align_local <- stan(
-    file = "indiscriminate_align_local.stan",
-    data = c(full.data, local_indiscriminate = text$local_alignment_all),
-    chains = 4, cores = 4, iter = 10000,
-    init = 0)
+# indiscriminate_align_local <- stan(
+#     file = "models/indiscriminate_align_local.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("indiscriminate_align_local", file="models/indiscriminate_align_local.model")
 
-save("indiscriminate_align_local", file="indiscriminate_align_local.model")
+
+# conf_align_global <- stan(
+#     file = "models/conf_align_global.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("conf_align_global", file="models/conf_align_global.model")
+
+
+# 
+# cosine <- stan(
+#     file = "models/cosine.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("cosine", file="models/cosine.model")
+
+# self_l <- stan(
+#     file = "models/self_l.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l", file="models/self_l.model")
+# 
+# align_l <- stan(
+#     file = "models/align_l.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("align_l", file="models/align_l.model")
+# 
+# synergy_l <- stan(
+#     file = "models/synergy_l.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("synergy_l", file="models/synergy_l.model")
+
+
+# self_entr <- stan(
+#     file = "models/self_entr.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_entr", file="models/self_entr.model")
+# 
+# align_entr <- stan(
+#     file = "models/align_entr.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("align_entr", file="models/align_entr.model")
+# 
+# synergy_entr <- stan(
+#     file = "models/synergy_entr.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("synergy_entr", file="models/synergy_entr.model")
+
+
+# self_l_and_local_confidence <- stan(
+#     file = "models/self_l_and_local_confidence.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l_and_local_confidence", file="models/self_l_and_local_confidence.model")
+# 
+# self_l_and_cosine <- stan(
+#     file = "models/self_l_and_cosine.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l_and_cosine", file="models/self_l_and_cosine.model")
+
+# self_l_cosine_local_confidence <- stan(
+#     file = "models/self_l_cosine_local_confidence.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l_cosine_local_confidence", file="models/self_l_cosine_local_confidence.model")
+
+# cosine_local_confidence <- stan(
+#     file = "models/cosine_local_confidence.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("cosine_local_confidence", file="models/cosine_local_confidence.model")
+
+# self_l_x_local_confidence <- stan(
+#     file = "models/self_l_x_local_confidence.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l_x_local_confidence", file="models/self_l_x_local_confidence.model")
+
+
+
+# self_l_x_cosine <- stan(
+#     file = "models/self_l_x_cosine.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l_x_cosine", file="models/self_l_x_cosine.model")
+
+
+
+# cosine_x_local_confidence <- stan(
+#     file = "models/cosine_x_local_confidence.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("cosine_x_local_confidence", file="models/cosine_x_local_confidence.model")
+
+
+
+# self_l_x_local_confidence2 <- stan(
+#     file = "models/self_l_x_local_confidence2.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l_x_local_confidence2", file="models/self_l_x_local_confidence2.model")
+
+
+# self_l_x_cosine2 <- stan(
+#     file = "models/self_l_x_cosine2.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l_x_cosine2", file="models/self_l_x_cosine2.model")
+# 
+# 
+# cosine_x_local_confidence_2 <- stan(
+#     file = "models/cosine_x_local_confidence_2.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("cosine_x_local_confidence_2", file="models/cosine_x_local_confidence_2.model")
+# 
+# 
+# self_l_x_cosine_conf_local <- stan(
+#     file = "models/self_l_x_cosine_conf_local.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l_x_cosine_conf_local", file="models/self_l_x_cosine_conf_local.model")
+# 
+# 
+# 
+# self_l_x_cosine_conf_local_full <- stan(
+#     file = "models/self_l_x_cosine_conf_local_full.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l_x_cosine_conf_local_full", file="models/self_l_x_cosine_conf_local_full.model")
+
+# self_l_x_local_confidence_only <- stan(
+#     file = "models/self_l_x_local_confidence_only.stan",
+#     data = full.data,
+#     chains = chains, cores = cores, iter = iter,
+#     init = 0)
+# 
+# save("self_l_x_local_confidence_only", file="models/self_l_x_local_confidence_only.model")
+
+
 
 ```
 
 ## WAIC calculations
 ```{r}
 
+add_predictive_posterior <- function(dataset, model) {
+    post <- extract.samples(model)
+    dataset %>%
+        mutate(theta_ind = purrr::pmap(list(n_ind, group, intensity, vowel), function(n,gro,int,vow) {
+            iA = post$ia + post$ia_vowel[,vow] + post$ia_group[,gro]
+            return(inv_logit(iA))
+        }), theta_gro = purrr::pmap(list(n_gro, group, intensity, vowel), function(n,gro,int,vow) {
+            gA = post$ga + post$ga_vowel[,vow] + post$ga_group[,gro]
+            return(inv_logit(gA))
+        }))
+}
+
 my_waic <- function(pred_post) {
     pred_post %>%
-        mutate(lik_gro = purrr::pmap(list(k_gro, n_gro, theta_gro), function(k,n,theta){
-            dbinom(k,n,theta)
-            }), lik_ind = purrr::pmap(list(k_ind, n_ind, theta_ind), function(k,n,theta){
-                dbinom(k,n,theta)
-    }), lppd_gro = purrr::map_dbl(lik_gro, function(lik) {
-        log(mean(lik))
-    }), lppd_ind = purrr::map_dbl(lik_ind, function(lik) {
-        log(mean(lik))
-    }), pwaic_gro = purrr::map_dbl(lik_gro, var2),
-        pwaic_ind = purrr::map_dbl(lik_ind, var2)) %>%
-    summarise(WAIC = -2 * (sum(lppd_ind, lppd_gro) - sum(pwaic_gro, pwaic_ind)),
-              WAIC_SE = sqrt(n() * 2 * var2(-2 * (c(lppd_ind, lppd_gro) - c(pwaic_gro, pwaic_ind)))),
-              pWAIC = sum(pwaic_gro, pwaic_ind))
+        mutate(
+            lik_gro = purrr::pmap(list(k_gro, n_gro, theta_gro), function(k,n,theta){
+                dbinom(k,n,theta)}), 
+            lik_ind = purrr::pmap(list(k_ind, n_ind, theta_ind), function(k,n,theta){
+                dbinom(k,n,theta)}), 
+            lppd = purrr::map2_dbl(lik_gro, lik_ind, function(lik1, lik2) {
+                log(mean(c(lik1, lik2)))}), 
+            pwaic = purrr::map2_dbl(lik_gro, lik_ind, ~var2(c(.x, .y)))) %>%
+        summarise(
+            WAIC = -2 * (sum(lppd) - sum(pwaic)),
+            WAIC_SE = sqrt(n() * 2 * var2(-2 * (lppd - pwaic))),
+            pWAIC = sum(pwaic))
 }
+
 
 dataset = data_frame(
     n_gro = full.data$n_gro, 
@@ -140,95 +333,84 @@ dataset = data_frame(
     intensity = full.data$intensity, 
     vowel = full.data$vowel)
 
+do_waic <- function(model, data = dataset) {
+    add_predictive_posterior(data, model) %>%
+        my_waic()
+}
 ```
 
-
-
-```{r intercept only}
-# load a model
-load("intercept.model")
-# extract posterior
-post <- extract.samples(intercept)
-
-intercept_pred_post = dataset %>%
-    mutate(theta_ind = purrr::pmap(list(n_ind, group, intensity, vowel), function(n,gro,int,vow) {
-        iA = post$ia + post$ia_vowel[,vow] + post$ia_group[,gro]
-        return(inv_logit(iA))
-    }), theta_gro = purrr::pmap(list(n_gro, group, intensity, vowel), function(n,gro,int,vow) {
-        gA = post$ga + post$ga_vowel[,vow] + post$ga_group[,gro]
-        return(inv_logit(gA))
-    }))
-
-```
-
-
-```{r conf align local}
-# load a model
-load("conf_align_local.model")
-# extract posterior
-post <- extract.samples(conf_align_local)
-
-conf_align_local_pred_post = dataset %>%
-    mutate(theta_ind = purrr::pmap(list(n_ind, group, intensity, vowel), function(n,gro,int,vow) {
-        iA = post$ia + post$ia_vowel[,vow] + post$ia_group[,gro]
-        iB = post$ib + post$ib_vowel[,vow] + post$ib_group[,gro]
-        return(inv_logit(iA + iB * int))
-    }), theta_gro = purrr::pmap(list(n_gro, group, intensity, vowel), function(n,gro,int,vow) {
-        gA = post$ga + post$ga_vowel[,vow] + post$ga_group[,gro]
-        gB = post$gb + post$gb_vowel[,vow] + post$gb_group[,gro]
-        return(inv_logit(gA + gB * int))
-    }))
-
-```
-
-
-```{r indiscriminate align local}
-# load a model
-load("conf_align_local.model")
-# extract posterior
-post <- extract.samples(conf_align_local)
-
-conf_align_local_pred_post = dataset %>%
-    mutate(theta_ind = purrr::pmap(list(n_ind, group, intensity, vowel), function(n,gro,int,vow) {
-        iA = post$ia + post$ia_vowel[,vow] + post$ia_group[,gro]
-        iB = post$ib + post$ib_vowel[,vow] + post$ib_group[,gro]
-        return(inv_logit(iA + iB * int))
-    }), theta_gro = purrr::pmap(list(n_gro, group, intensity, vowel), function(n,gro,int,vow) {
-        gA = post$ga + post$ga_vowel[,vow] + post$ga_group[,gro]
-        gB = post$gb + post$gb_vowel[,vow] + post$gb_group[,gro]
-        return(inv_logit(gA + gB * int))
-    }))
-
-```
 
 ```{r comparing models}
-tribble(
-    ~model, ~waic,
-    "intercept", my_waic(intercept_pred_post),
-    "local confidence alignment", my_waic(conf_align_local_pred_post)
+load("models/intercept.model")
+load("models/conf_align_local.model")
+load("models/indiscriminate_align_local.model")
+load("models/conf_align_global.model")
+load("models/cosine.model")
+load("models/self_l.model")
+load("models/align_l.model")
+load("models/synergy_l.model")
+load("models/self_entr.model")
+load("models/align_entr.model")
+load("models/synergy_entr.model")
+load("models/self_l_and_local_confidence.model")
+load("models/self_l_and_cosine.model")
+load("models/self_l_cosine_local_confidence.model")
+load("models/cosine_local_confidence.model")
+load("models/self_l_x_local_confidence.model")
+load("models/self_l_x_cosine.model")
+load("models/cosine_x_local_confidence.model")
+
+load("models/self_l_x_cosine_conf_local_full.model")
+load("models/self_l_x_cosine_conf_local.model")
+load("models/cosine_x_local_confidence_2.model")
+load("models/self_l_x_cosine2.model")
+load("models/self_l_x_local_confidence2.model")
+load("models/self_l_x_local_confidence_only.model")
+
+
+waic_list <- tribble(
+    ~model,                             ~waic,
+    "intercept",                        do_waic(intercept),
+    "local confidence alignment",       do_waic(conf_align_local),
+    "local indiscriminate alignment",   do_waic(indiscriminate_align_local),
+    "global confidence alignment",      do_waic(conf_align_global),
+    "word set cosine similarity",       do_waic(cosine),
+    "self L",                           do_waic(self_l),
+    "alignment L",                      do_waic(align_l),
+    "synergy L",                        do_waic(synergy_l),
+    "self entropy",                     do_waic(self_entr),
+    "alignment entropy",                do_waic(align_entr),
+    "synergy entropy",                  do_waic(synergy_entr),
+    "self L + local confidence",        do_waic(self_l_and_local_confidence),
+    "self L + cosine",                  do_waic(self_l_and_cosine),
+    "self L + cosine + local conf",     do_waic(self_l_cosine_local_confidence),
+    "cosine + local confidence",        do_waic(cosine_local_confidence),
+    "self L * conf + cosine",           do_waic(self_l_x_local_confidence),
+    "self L * cosine + local conf",     do_waic(self_l_x_cosine),
+    "cosine * local confidence + self L", do_waic(cosine_x_local_confidence),
+    "self L * local + self L * cosine", do_waic(self_l_x_local_confidence2),
+    "self L * cosine + local * cosine", do_waic(self_l_x_cosine2),
+    "self L * local + cosine * local",  do_waic(cosine_x_local_confidence_2),
+    "self L * cosine * local 2way only",do_waic(self_l_x_cosine_conf_local),
+    "self L * cosine * local",          do_waic(self_l_x_cosine_conf_local_full),
+    "self L * local",                   do_waic(self_l_x_local_confidence_only)
+    
 ) %>% unnest() %>%
     arrange(WAIC) %>%
-    mutate(dWAIC = WAIC[1] - WAIC,
+    mutate(dWAIC = WAIC - WAIC[1],
            weight = exp(-0.5 * dWAIC),
-           weight = ifelse(weight == Inf, 0, weight),
            weight = weight / sum(weight)
-    )
-```
-
-
-
-```{r, fig.height=12, fig.width=10, echo=F}
-traceplot(fit.1, pars = c("ga", "gb", "ia" ,"ib", "collective_benefit"))
-pairs(fit.1, pars = c("ga", "gb", "ia" ,"ib", "collective_benefit"))
-traceplot(fit.1, pars = c("ga_group", "ga_group", "ia_group", "ib_group"))
-traceplot(fit.1, pars = c("ga_vowel", "ga_vowel", "ia_vowel", "ib_vowel"))
-traceplot(fit.1, pars = c("col_a", "col_b_confidence", "collective_sigma"))
+    ) %>%
+    # round the table to 3 digits
+    mutate_at(vars(-model), function(co) {round(co, 3)})
+waic_list
+# save("waic_list", file="models/waic.Rdata")
 ```
 
 
 
 ```{r, echo=F}
-post <- extract.samples(conf_align_local)
+post <- extract.samples(self_l_x_cosine_conf_local_full)
 n_ <- length(post$collective_benefit)
 
 post$collective_benefit %>%
@@ -244,13 +426,9 @@ post$collective_benefit %>%
           axis.ticks.y = element_blank())#+
     # coord_cartesian(ylim=c(1.1, 20)) 
 
-ggsave("plots/collective_benefit_3.png")
+# ggsave("plots/collective_benefit_3.png")
 
 
-```
-
-```{r, echo=F}
-fit.1
 ```
 
 
@@ -259,10 +437,10 @@ fit.1
 
 ```{r}
 
-pred.post.data <- post %>%
+pred.post.data <- extract.samples(self_l_x_cosine_conf_local_full) %>%
     as.data.frame() %>%
     as_data_frame() %>%
-    select(col_a, col_b_confidence, collective_sigma)
+    select(col_a : col_b7)
 
 pred.post.data %>%
     gather() %>%
@@ -271,33 +449,155 @@ pred.post.data %>%
     geom_density(alpha=.4, colour=NA) +
     facet_wrap(~ key, scales="free")
 
+pairs(pred.post.data)
+
 ```
 
 
 ```{r}
 # confidence alignment back-scaling
-m = mean(text$local_alignment_confidence)
-s = sd(text$local_alignment_confidence)
+# m = mean(text$local_alignment_confidence)
+# s = sd(text$local_alignment_confidence)
+# 
+# data_frame(local_confidence = seq_range(full.data$local_confidence, 10)) %>%
+#     mutate(samples = rep(list(pred.post.data), n()),
+#            pred.post = purrr::map2(local_confidence, samples, ~.y$col_a + .y$col_b_confidence * .x),
+#            local_confidence = (local_confidence * s) + m) %>%
+#     unnest(pred.post) %>%
+#     ggplot(aes(local_confidence, pred.post)) +
+#     geom_line(stat="summary", fun.y=mean) +
+#     geom_ribbon(stat="summary", fun.data=mean_hpdi, alpha=.3) +
+#     geom_point(aes(local_confidence, y = .97), data = data.frame(local_confidence = (full.data$local_confidence * s) + m),
+#                shape="|", size=3) +
+#     theme_tufte() +
+#     theme(axis.ticks = element_blank()) +
+#     labs(x = "Local confidence alignment: Proportion of confidence expressions aligned with previous sentence",
+#          y = "Predicted collective benefit, mean +- 89% HPDI",
+#          title = "Counterfactual predictive posterior for explicit metacognition (confidence alignment)",
+#          subtitle = "Actual dyads' confidence alignment as x-axis") +
+#     scale_y_continuous(breaks = seq(.96,1.1, .02))
 
-data_frame(local_confidence = seq_range(full.data$local_confidence, 10)) %>%
-    mutate(samples = rep(list(pred.post.data), n()),
-           pred.post = purrr::map2(local_confidence, samples, ~.y$col_a + .y$col_b_confidence * .x),
-           local_confidence = (local_confidence * s) + m) %>%
-    unnest(pred.post) %>%
-    ggplot(aes(local_confidence, pred.post)) +
-    geom_line(stat="summary", fun.y=mean) +
-    geom_ribbon(stat="summary", fun.data=mean_hpdi, alpha=.3) +
-    geom_point(aes(local_confidence, y = .97), data = data.frame(local_confidence = (full.data$local_confidence * s) + m),
-               shape="|", size=3) +
+# ggsave("plots/pred_post_local_confidence.png")
+```
+
+```{r counterfactual predictive for the 3 way interaction model}
+
+posterior = extract.samples(self_l_x_cosine_conf_local_full)
+
+pred <- expand.grid(local_alignment_confidence = seq(-2,2,length.out = 10),
+          self.l = seq(-2,2, 2),
+          cosine_word_set = seq(-2,2,2)) %>%
+    mutate(collective_benefit = purrr::pmap(list(local_alignment_confidence, self.l, cosine_word_set), function(loc, sel, cosi) {
+        posterior$col_a +
+            posterior$col_b1 * sel +
+            posterior$col_b2 * loc +
+            posterior$col_b3 * cosi + 
+            posterior$col_b4 * loc * sel +
+            posterior$col_b5 * cosi * sel +
+            posterior$col_b6 * cosi * loc +
+            posterior$col_b7 * cosi * loc * sel
+    })) %>%
+    plyr::adply(1, function(dat) {
+        # print(dat)
+        mean_hpdi(dat$collective_benefit[[1]])
+    }) %>%
+    select(-collective_benefit)
+
+
+
+pred %>%
+    ggplot(aes(local_alignment_confidence, ymin=ymin, y=y, ymax=ymax)) +
+    geom_line() +
+    geom_ribbon(alpha=.3) +
     theme_tufte() +
     theme(axis.ticks = element_blank()) +
-    labs(x = "Local confidence alignment: Proportion of confidence expressions aligned with previous sentence",
+    labs(x = "Local confidence alignment: Proportion of confidence expressions aligned with previous sentence (z-scale)",
          y = "Predicted collective benefit, mean +- 89% HPDI",
-         title = "Counterfactual predictive posterior for explicit metacognition (confidence alignment)",
-         subtitle = "Actual dyads' confidence alignment as x-axis") +
-    scale_y_continuous(breaks = seq(.96,1.1, .02))
+         title = "Counterfactual predictive posterior for the 3 way interaction model",
+         subtitle = "Facets are z-scaled self L (chat predicability) and cos distance between word sets of interaction partners") +
+    # scale_y_continuous(limits = c(0,1)) +
+    coord_cartesian(ylim = c(0,6)) +
+    facet_grid(cosine_word_set ~ self.l, labeller=label_both)
 
-ggsave("plots/pred_post_local_confidence.png")
+# ggsave("plots/3way_interaction.png")
+```
+
+```{r another model plot}
+posterior = extract.samples(self_l_x_local_confidence2)
+
+pred <- expand.grid(local_alignment_confidence = seq(-2,2,length.out = 10),
+          self.l = seq(-2,2, 2),
+          cosine_word_set = seq(-2,2,2)) %>%
+    mutate(collective_benefit = purrr::pmap(list(local_alignment_confidence, self.l, cosine_word_set), function(loc, sel, cosi) {
+        posterior$col_a +
+            posterior$col_b1 * sel +
+            posterior$col_b2 * loc +
+            posterior$col_b3 * cosi + 
+            posterior$col_b4 * loc * sel +
+            posterior$col_b5 * cosi * sel;
+    })) %>%
+    plyr::adply(1, function(dat) {
+        # print(dat)
+        mean_hpdi(dat$collective_benefit[[1]])
+    }) %>%
+    select(-collective_benefit)
+
+
+
+pred %>%
+    ggplot(aes(local_alignment_confidence, ymin=ymin, y=y, ymax=ymax)) +
+    geom_line() +
+    geom_ribbon(alpha=.3) +
+    theme_tufte() +
+    theme(axis.ticks = element_blank()) +
+    labs(x = "Local confidence alignment: Proportion of confidence expressions aligned with previous sentence (z-scale)",
+         y = "Predicted collective benefit, mean +- 89% HPDI",
+         title = "Counterfactual predictive posterior for: self L * local + self L * cosine",
+         subtitle = "Facets are z-scaled self L (chat predicability) and cos distance between word sets of interaction partners") +
+    # scale_y_continuous(limits = c(0,1)) +
+    coord_cartesian(ylim = c(0,3)) +
+    facet_grid(self.l ~ cosine_word_set, labeller=label_both)
+```
+
+```{r a 3rd model plot}
+posterior = extract.samples(self_l_x_local_confidence)
+
+pred <- expand.grid(
+        local_alignment_confidence = seq(-2,2,length.out = 10),
+        self.l = seq(-2,2, 2),
+        # cosine_word_set = seq(-2,2,length.out=10)
+        # self.l = 0,
+        # local_alignment_confidence = 0,
+        cosine_word_set = 0
+        ) %>%
+    mutate(collective_benefit = purrr::pmap(list(local_alignment_confidence, self.l, cosine_word_set), function(loc, sel, cosi) {
+        posterior$col_a +
+            posterior$col_b1 * sel +
+            posterior$col_b2 * loc +
+            posterior$col_b3 * cosi + 
+            posterior$col_b4 * loc * sel;
+    })) %>%
+    plyr::adply(1, function(dat) {
+        # print(dat)
+        mean_hpdi(dat$collective_benefit[[1]])
+    }) %>%
+    select(-collective_benefit)
+
+
+pred %>%
+    ggplot(aes(local_alignment_confidence, ymin=ymin, y=y, ymax=ymax)) +
+    geom_line() +
+    geom_ribbon(alpha=.3) +
+    theme_tufte() +
+    theme(axis.ticks = element_blank()) +
+    labs(x = "Local confidence alignment: Proportion of confidence expressions aligned with previous sentence (z-scale)",
+         y = "Predicted collective benefit, mean +- 89% HPDI",
+         title = "Counterfactual predictive posterior for: self L * local + cosine",
+         subtitle = "Facets are z-scaled self L (chat predicability) and cos distance between word sets of interaction partners") +
+    # scale_y_continuous(limits = c(0,1)) +
+    coord_cartesian(ylim = c(0.7,1.4)) +
+    facet_wrap(~ self.l, labeller=label_both)
+
 ```
 
 
@@ -307,29 +607,29 @@ ggsave("plots/pred_post_local_confidence.png")
 # gB = gb + gb_vowel[vowel] + gb_group[group];
 # gtheta[i] =  gA[i] + gB[i] * intensity[i];
 
-expand.grid(intensity = unique(full.data$intensity),
-            vowel = 1:4,
-            group = 1:9) %>%
-    mutate(Group = pmap(list(intensity, group, vowel), function(i,g,v){
-        post$ga + post$ga_vowel[,v] + post$ga_group[,g] +
-            (post$gb + post$gb_vowel[,v] + post$gb_group[,g]) * i
-    }), Individual = pmap(list(intensity, group, vowel), function(i,g,v){
-        post$ia + post$ia_vowel[,v] + post$ia_group[,g] +
-            (post$ib + post$ib_vowel[,v] + post$ib_group[,g]) * i
-    })) %>%
-    left_join(data.frame(group = 1:9, confidence = full.data$local_confidence)) %>%
-    gather("who", "theta", c(Group, Individual)) %>%
-    mutate(n = 10,
-           theta = purrr::map(theta, ~inv_logit(.))) %>%
-    mutate(vowel = c("e", "i", "o", "u")[vowel]) %>%
-    unnest(theta) %>%
-    ggplot(aes(intensity, theta, group=str_c(group, who), colour=confidence)) +
-    # geom_ribbon(aes(group=NA), stat="summary", fun.data=mean_hpdi, alpha=.3) +
-    geom_line(stat="summary", fun.y=mean, alpha=.7) +
-    geom_line(aes(group=NA), stat="summary", fun.y=mean, colour="red") +
-    facet_wrap(~ vowel, labeller = label_both) +
-    theme_few() +
-    labs(x = "Stimulus intensity (dB)", y = "Proportion correctly identified")
+# expand.grid(intensity = unique(full.data$intensity),
+#             vowel = 1:4,
+#             group = 1:9) %>%
+#     mutate(Group = pmap(list(intensity, group, vowel), function(i,g,v){
+#         post$ga + post$ga_vowel[,v] + post$ga_group[,g] +
+#             (post$gb + post$gb_vowel[,v] + post$gb_group[,g]) * i
+#     }), Individual = pmap(list(intensity, group, vowel), function(i,g,v){
+#         post$ia + post$ia_vowel[,v] + post$ia_group[,g] +
+#             (post$ib + post$ib_vowel[,v] + post$ib_group[,g]) * i
+#     })) %>%
+#     left_join(data.frame(group = 1:9, confidence = full.data$local_confidence)) %>%
+#     gather("who", "theta", c(Group, Individual)) %>%
+#     mutate(n = 10,
+#            theta = purrr::map(theta, ~inv_logit(.))) %>%
+#     mutate(vowel = c("e", "i", "o", "u")[vowel]) %>%
+#     unnest(theta) %>%
+#     ggplot(aes(intensity, theta, group=str_c(group, who), colour=confidence)) +
+#     # geom_ribbon(aes(group=NA), stat="summary", fun.data=mean_hpdi, alpha=.3) +
+#     geom_line(stat="summary", fun.y=mean, alpha=.7) +
+#     geom_line(aes(group=NA), stat="summary", fun.y=mean, colour="red") +
+#     facet_wrap(~ vowel, labeller = label_both) +
+#     theme_few() +
+#     labs(x = "Stimulus intensity (dB)", y = "Proportion correctly identified")
 
 ```
 

@@ -1,8 +1,6 @@
 library(DiagrammeR)
 
-
-
-grViz("
+plate <- grViz("
     digraph G {
 
         subgraph cluster_dyads {
@@ -139,3 +137,6 @@ grViz("
 
 
     }")
+
+
+plate

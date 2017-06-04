@@ -43,12 +43,9 @@ get_vowel <- function(vowel = "e", formantStrength = 45, speaker = "M1", durTota
 }
 #
 #
-# s <- get_vowel()
-# savewav(s,44100, "test.wav")
 
 folder <- "wav/"
 
-# allsounds <- vector()
 
 for (v in c("e", "i", "u", "o")) {
     for (s in c(seq(5,26, 3),60)) {
@@ -60,7 +57,3 @@ for (v in c("e", "i", "u", "o")) {
 }
 
 # savewav(allsounds, 44100, "full.wav")
-
-
-
-# a = generateBout (nSyl=1, durTotal=300, randomVowel=T, pitch_start = 100, pitch_anchor=100, pitch_end=200, pitch_anchor_location=90)

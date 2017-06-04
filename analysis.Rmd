@@ -8,41 +8,59 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(rstan)
 library(rethinking)
+library(stringr)
+library(scales); library(ggthemes)
+library(modelr)
+source("../../Computational models/exercises/functions.R")
 options(mc.cores = 4)
 
 individual <- read.csv("data/individual.csv") %>% mutate(prop = k / n)
 best_individual <- read.csv("data/best_individual.csv")
 group <- read.csv("data/group.csv") %>% mutate(prop = k / n)
-text <- read.csv("data/text_data.csv") %>%
-    right_join(group, by = c("group" = "group_id"))
+text <- read.csv("data/text_data.csv")
 
 ```
 
+Stan code for the analysis of my Social and Cultural Dynamics exam
 
-``` {r, echo=F}
+
+``` {r, echo=F, fig.height=6, fig.width=8}
 mutate(individual, who="Individual") %>%
     select(-participant) %>%
     rbind(mutate(group, who="Group")) %>%
 
-    ggplot(aes(intensity, prop, linetype=who)) +
+    ggplot(aes(intensity, prop, colour=who)) +
     geom_line(stat="summary", fun.y=mean) +
+    geom_jitter(aes(size=n), height=.05, width=.4, alpha=.2) +
     # geom_ribbon(stat="summary", fun.data=mean_cl_boot, alpha=.3) +
     # geom_violin(aes(group=group.intensity)) +
     facet_wrap(~ vowel) +
-    ylim(0, 1) +
     labs(x = "Stimulus intensity (dB)", y = "Proportion correct answers",
-         title = "Raw data (means per vowel per intensity)")
+         title = "Raw data (means per vowel per intensity)\nPoints are per participant\nLines are grand means") +
+    guides(colour = guide_legend(title=element_blank())) +
+    scale_size(range=c(1,4)) +
+    theme_tufte() +
+    scale_y_continuous(labels=percent) +
+    scale_x_continuous(breaks = seq(5,26, 3)) +
+    theme(axis.ticks.x = element_blank())
 
 ```
 
+## Plate notation
+```{r, echo=F, fig.width=12, fig.height=8}
+source("plate_notation.R")
+plate
+```
 
+
+## stan code
 
 ``` {r stancode, echo=F}
-model.file = "model.stan"
+model.file = "intercept.stan"
 cat(read_file(model.file))
 ```
 
-```{r}
+```{r, echo=F, include=F}
 f <- function(x){ array(as.integer(x), dim = length(x))}
 
 
@@ -57,7 +75,7 @@ full.data <- list(
     group = group$group_id,
     intensity = group$intensity,
     vowel = as.numeric(factor(group$vowel)),
-    local_confidence = text$local_alignment_confidence
+    local_confidence = scale(text$local_alignment_confidence)[,1]
     # predictors
     # similarity = best_individual$similarity
     )
@@ -65,25 +83,269 @@ full.data <- list(
 ```
 
 
-```{r}
-fit.1 <- stan(
-    file = model.file,
-    data = full.data,
-    chains = 1, cores = 1, iter = 1000)
+```{r, include=F}
+# intercept <- stan(
+#     file = "intercept.stan",
+#     data = full.data,
+#     chains = 4, cores = 4, iter = 2000,
+#     init = 0)
+# 
+# save("intercept", file="intercept.model")
 
+
+# conf_align_local <- stan(
+#     file = "conf_align_local.stan",
+#     data = full.data,
+#     chains = 4, cores = 4, iter = 10000,
+#     init = 0)
+# 
+# save("conf_align_local", file="conf_align_local.model")
+
+indiscriminate_align_local <- stan(
+    file = "indiscriminate_align_local.stan",
+    data = c(full.data, local_indiscriminate = text$local_alignment_all),
+    chains = 4, cores = 4, iter = 10000,
+    init = 0)
+
+save("indiscriminate_align_local", file="indiscriminate_align_local.model")
+
+```
+
+## WAIC calculations
+```{r}
+
+my_waic <- function(pred_post) {
+    pred_post %>%
+        mutate(lik_gro = purrr::pmap(list(k_gro, n_gro, theta_gro), function(k,n,theta){
+            dbinom(k,n,theta)
+            }), lik_ind = purrr::pmap(list(k_ind, n_ind, theta_ind), function(k,n,theta){
+                dbinom(k,n,theta)
+    }), lppd_gro = purrr::map_dbl(lik_gro, function(lik) {
+        log(mean(lik))
+    }), lppd_ind = purrr::map_dbl(lik_ind, function(lik) {
+        log(mean(lik))
+    }), pwaic_gro = purrr::map_dbl(lik_gro, var2),
+        pwaic_ind = purrr::map_dbl(lik_ind, var2)) %>%
+    summarise(WAIC = -2 * (sum(lppd_ind, lppd_gro) - sum(pwaic_gro, pwaic_ind)),
+              WAIC_SE = sqrt(n() * 2 * var2(-2 * (c(lppd_ind, lppd_gro) - c(pwaic_gro, pwaic_ind)))),
+              pWAIC = sum(pwaic_gro, pwaic_ind))
+}
+
+dataset = data_frame(
+    n_gro = full.data$n_gro, 
+    n_ind = full.data$n_ind, 
+    k_gro = full.data$k_gro,
+    k_ind = full.data$k_ind,
+    group = full.data$group, 
+    intensity = full.data$intensity, 
+    vowel = full.data$vowel)
 
 ```
 
 
-```{r}
-post <- extract.samples(fit.1)
 
-data_frame(group = factor(group$group_id)) %>%
-    mutate(i = 1:n(),
-           collective = purrr::map(i, ~post$collective_benefit[,.x])) %>%
-    unnest(collective) %>%
-    ggplot(aes(collective, colour=group, group=group)) +
+```{r intercept only}
+# load a model
+load("intercept.model")
+# extract posterior
+post <- extract.samples(intercept)
+
+intercept_pred_post = dataset %>%
+    mutate(theta_ind = purrr::pmap(list(n_ind, group, intensity, vowel), function(n,gro,int,vow) {
+        iA = post$ia + post$ia_vowel[,vow] + post$ia_group[,gro]
+        return(inv_logit(iA))
+    }), theta_gro = purrr::pmap(list(n_gro, group, intensity, vowel), function(n,gro,int,vow) {
+        gA = post$ga + post$ga_vowel[,vow] + post$ga_group[,gro]
+        return(inv_logit(gA))
+    }))
+
+```
+
+
+```{r conf align local}
+# load a model
+load("conf_align_local.model")
+# extract posterior
+post <- extract.samples(conf_align_local)
+
+conf_align_local_pred_post = dataset %>%
+    mutate(theta_ind = purrr::pmap(list(n_ind, group, intensity, vowel), function(n,gro,int,vow) {
+        iA = post$ia + post$ia_vowel[,vow] + post$ia_group[,gro]
+        iB = post$ib + post$ib_vowel[,vow] + post$ib_group[,gro]
+        return(inv_logit(iA + iB * int))
+    }), theta_gro = purrr::pmap(list(n_gro, group, intensity, vowel), function(n,gro,int,vow) {
+        gA = post$ga + post$ga_vowel[,vow] + post$ga_group[,gro]
+        gB = post$gb + post$gb_vowel[,vow] + post$gb_group[,gro]
+        return(inv_logit(gA + gB * int))
+    }))
+
+```
+
+
+```{r indiscriminate align local}
+# load a model
+load("conf_align_local.model")
+# extract posterior
+post <- extract.samples(conf_align_local)
+
+conf_align_local_pred_post = dataset %>%
+    mutate(theta_ind = purrr::pmap(list(n_ind, group, intensity, vowel), function(n,gro,int,vow) {
+        iA = post$ia + post$ia_vowel[,vow] + post$ia_group[,gro]
+        iB = post$ib + post$ib_vowel[,vow] + post$ib_group[,gro]
+        return(inv_logit(iA + iB * int))
+    }), theta_gro = purrr::pmap(list(n_gro, group, intensity, vowel), function(n,gro,int,vow) {
+        gA = post$ga + post$ga_vowel[,vow] + post$ga_group[,gro]
+        gB = post$gb + post$gb_vowel[,vow] + post$gb_group[,gro]
+        return(inv_logit(gA + gB * int))
+    }))
+
+```
+
+```{r comparing models}
+tribble(
+    ~model, ~waic,
+    "intercept", my_waic(intercept_pred_post),
+    "local confidence alignment", my_waic(conf_align_local_pred_post)
+) %>% unnest() %>%
+    arrange(WAIC) %>%
+    mutate(dWAIC = WAIC[1] - WAIC,
+           weight = exp(-0.5 * dWAIC),
+           weight = ifelse(weight == Inf, 0, weight),
+           weight = weight / sum(weight)
+    )
+```
+
+
+
+```{r, fig.height=12, fig.width=10, echo=F}
+traceplot(fit.1, pars = c("ga", "gb", "ia" ,"ib", "collective_benefit"))
+pairs(fit.1, pars = c("ga", "gb", "ia" ,"ib", "collective_benefit"))
+traceplot(fit.1, pars = c("ga_group", "ga_group", "ia_group", "ib_group"))
+traceplot(fit.1, pars = c("ga_vowel", "ga_vowel", "ia_vowel", "ib_vowel"))
+traceplot(fit.1, pars = c("col_a", "col_b_confidence", "collective_sigma"))
+```
+
+
+
+```{r, echo=F}
+post <- extract.samples(conf_align_local)
+n_ <- length(post$collective_benefit)
+
+post$collective_benefit %>%
+    as_data_frame() %>%
+    gather("Group") %>%
+    mutate(Group = str_sub(Group, 2, 2)) %>%
+    ggplot(aes(value, group=Group)) +
     geom_density() +
-    labs(x = "Collective Benefit", y="Posterior")
+    labs(x = "Collective Benefit", y="",
+         title = "Posteriors for collective benefit\nprior = normal(normal(1,1), cauchy(0,2))\nEach line is a dyad") +
+    theme_tufte() +
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank())#+
+    # coord_cartesian(ylim=c(1.1, 20)) 
+
+ggsave("plots/collective_benefit_3.png")
+
+
 ```
 
+```{r, echo=F}
+fit.1
+```
+
+
+
+
+
+```{r}
+
+pred.post.data <- post %>%
+    as.data.frame() %>%
+    as_data_frame() %>%
+    select(col_a, col_b_confidence, collective_sigma)
+
+pred.post.data %>%
+    gather() %>%
+    # group_by()
+    ggplot(aes(value, fill=key)) +
+    geom_density(alpha=.4, colour=NA) +
+    facet_wrap(~ key, scales="free")
+
+```
+
+
+```{r}
+# confidence alignment back-scaling
+m = mean(text$local_alignment_confidence)
+s = sd(text$local_alignment_confidence)
+
+data_frame(local_confidence = seq_range(full.data$local_confidence, 10)) %>%
+    mutate(samples = rep(list(pred.post.data), n()),
+           pred.post = purrr::map2(local_confidence, samples, ~.y$col_a + .y$col_b_confidence * .x),
+           local_confidence = (local_confidence * s) + m) %>%
+    unnest(pred.post) %>%
+    ggplot(aes(local_confidence, pred.post)) +
+    geom_line(stat="summary", fun.y=mean) +
+    geom_ribbon(stat="summary", fun.data=mean_hpdi, alpha=.3) +
+    geom_point(aes(local_confidence, y = .97), data = data.frame(local_confidence = (full.data$local_confidence * s) + m),
+               shape="|", size=3) +
+    theme_tufte() +
+    theme(axis.ticks = element_blank()) +
+    labs(x = "Local confidence alignment: Proportion of confidence expressions aligned with previous sentence",
+         y = "Predicted collective benefit, mean +- 89% HPDI",
+         title = "Counterfactual predictive posterior for explicit metacognition (confidence alignment)",
+         subtitle = "Actual dyads' confidence alignment as x-axis") +
+    scale_y_continuous(breaks = seq(.96,1.1, .02))
+
+ggsave("plots/pred_post_local_confidence.png")
+```
+
+
+```{r}
+
+# gA = ga + ga_vowel[vowel] + ga_group[group]; 
+# gB = gb + gb_vowel[vowel] + gb_group[group];
+# gtheta[i] =  gA[i] + gB[i] * intensity[i];
+
+expand.grid(intensity = unique(full.data$intensity),
+            vowel = 1:4,
+            group = 1:9) %>%
+    mutate(Group = pmap(list(intensity, group, vowel), function(i,g,v){
+        post$ga + post$ga_vowel[,v] + post$ga_group[,g] +
+            (post$gb + post$gb_vowel[,v] + post$gb_group[,g]) * i
+    }), Individual = pmap(list(intensity, group, vowel), function(i,g,v){
+        post$ia + post$ia_vowel[,v] + post$ia_group[,g] +
+            (post$ib + post$ib_vowel[,v] + post$ib_group[,g]) * i
+    })) %>%
+    left_join(data.frame(group = 1:9, confidence = full.data$local_confidence)) %>%
+    gather("who", "theta", c(Group, Individual)) %>%
+    mutate(n = 10,
+           theta = purrr::map(theta, ~inv_logit(.))) %>%
+    mutate(vowel = c("e", "i", "o", "u")[vowel]) %>%
+    unnest(theta) %>%
+    ggplot(aes(intensity, theta, group=str_c(group, who), colour=confidence)) +
+    # geom_ribbon(aes(group=NA), stat="summary", fun.data=mean_hpdi, alpha=.3) +
+    geom_line(stat="summary", fun.y=mean, alpha=.7) +
+    geom_line(aes(group=NA), stat="summary", fun.y=mean, colour="red") +
+    facet_wrap(~ vowel, labeller = label_both) +
+    theme_few() +
+    labs(x = "Stimulus intensity (dB)", y = "Proportion correctly identified")
+
+```
+
+
+
+
+
+# comparing the four models from optimally interacting ..
+
+
+
+# Coin flip model
+# (s1 + s2) / 2
+# Behaviour and feedback model
+# max(s1, s2)
+# weighted confidence sharing
+# (s1 + s2) / (2 ^ 1/2)
+# direct signal sharing
+# (s1 ^ 2 + s2 ^ 2) ^ 1/2

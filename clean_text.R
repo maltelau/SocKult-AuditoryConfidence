@@ -28,7 +28,6 @@ library(ggthemes)
 library(scales)
 
 # cleaning the data
-setwd("/home/maltelau/Documents/CogSci/Social and Cultural Dynamics in Cognition/exam code")
 chatfile = "data/Chat messages (accessed 2017-04-26).csv"
 
 conf_scheme <- read.delim("codingscheme.txt", header = F, stringsAsFactors = F)
@@ -175,8 +174,9 @@ letters <- words %>%
 
 rqa_self <- letters %>%
     group_by(participant, group) %>%
-    do({RQA <- crqa(.$letter, .$letter, delay=1, embed=4, radius=0, rescale=0, normalize=0, mindiagline=2, minvertline=2)
-        data.frame(self_rr = RQA$RR, self_l = RQA$L, self_entr = RQA$ENTR)}) %>%
+    do({
+        RQA <- crqa(.$letter, .$letter, delay=1, embed=2, radius=0, rescale=0, normalize=0, mindiagline=2, minvertline=2)
+        data_frame(self_rr = RQA$RR, self_l = RQA$L, self_entr = RQA$ENTR, RP = list(RQA$RP))}) %>%
     group_by(group) %>%
     summarise_at(starts_with("self"), mean) %>%
     select(-participant)
@@ -187,8 +187,8 @@ rqa_alignment <- letters %>%
         participants = unique(.$participant)
         RQA <- crqa(filter(., participant == participants[1])$letter, 
                     filter(., participant == participants[2])$letter,
-                    delay=1, embed=4, radius=0, rescale=0, normalize=0, mindiagline=2, minvertline=2)
-        data.frame(align_rr = RQA$RR, align_l = RQA$L, align_entr = RQA$ENTR)
+                    delay=1, embed=2, radius=0, rescale=0, normalize=0, mindiagline=2, minvertline=2)
+        data_frame(align_rr = RQA$RR, align_l = RQA$L, align_entr = RQA$ENTR, RP = list(RQA$RP))
     })
 
 
@@ -196,12 +196,14 @@ rqa_synergy <- letters %>%
     group_by(group) %>%
     do({
         RQA <- crqa(.$letter, .$letter,
-                    delay=1, embed=4, radius=0, rescale=0, normalize=0, mindiagline=2, minvertline=2)
-        data.frame(synergy_rr = RQA$RR, synergy_l = RQA$L, synergy_entr = RQA$ENTR)
+                    delay=1, embed=2, radius=0, rescale=0, normalize=0, mindiagline=2, minvertline=2)
+        data_frame(synergy_rr = RQA$RR, synergy_l = RQA$L, synergy_entr = RQA$ENTR, RP = list(RQA$RP))
     })
 
-
-
+# plot the recurrence plots
+purrr::map(rqa_self$RP, image)
+purrr::map(rqa_alignment$RP, image)
+purrr::map(rqa_synergy$RP, image)
 
 
 
@@ -241,7 +243,7 @@ with_scheme %>%
     labs(x = "Confidence expression (Type)",
          y = "Percentage Tokens",
          title = "Confidence Expressions",
-         subtitle = "Distributions of confidence expressions as percentage of all confidence expressions by each group\nEach participant in a separate colour") +
+         subtitle = "Distributions of confidence expressions as percentage of all confidence expressions by that group\nEach participant in a separate colour") +
     scale_y_continuous(labels = percent)
 
 

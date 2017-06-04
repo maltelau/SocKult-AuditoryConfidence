@@ -1,10 +1,9 @@
 
-
+rm(list = ls())
 library(tidyverse)
 library(purrr)
 library(lubridate)
 # cleaning the data
-setwd("/home/maltelau/Documents/CogSci/Social and Cultural Dynamics in Cognition/exam code")
 datafile = "data/confidence_audio (accessed 2017-04-26).csv"
 
 

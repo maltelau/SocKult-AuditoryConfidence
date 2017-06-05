@@ -16,10 +16,12 @@ data{
     vector[N] intensity;
     
     // collective benefit model
-    vector[N_group] local_confidence;
+    vector[N_group] type_diff;
+    
 }
 
 parameters{
+    
     // random effects
     vector[N_group] ia_group;
     vector[N_group] ib_group;
@@ -37,18 +39,18 @@ parameters{
     real ib;
     
     // =========================================================
-    // parameters for the collective benefit model
+        // parameters for the collective benefit model
     real<lower=0> collective_benefit[N_group];
     real<lower=0> collective_sigma;
     real col_a;
-    real col_b_confidence;
+    real col_b;
     
 }
 
 transformed parameters{
     vector[N_group] gb_group;
     vector<lower=0,upper=1>[N] gb_group_theta;
-            
+    
     for (i in 1:N) {
         // collective benefit = inv_logit(dyad slope) / inv_logit(individual slope)
         // isolate for the group effect of the dyad slope
@@ -71,7 +73,7 @@ model{
     // intermediate parameter for the collective benefit model
     vector[N] collective_mu;
     
-    // priors for the psychometric curves
+    // priors
     ia_group ~ normal(0,1);
     ib_group ~ normal(0,1);
     ga_group ~ normal(0,1);
@@ -99,17 +101,20 @@ model{
         itheta[i] =  iA[i] + iB[i] * intensity[i];
     }
         
-    k_gro ~ binomial_logit(n_gro, gtheta);
-    k_ind ~ binomial_logit(n_ind, itheta);
-    
-    // priors for the collective benefit model
-    col_a ~ normal(1,1);
-    col_b_confidence ~ normal(0,1);
-    collective_sigma ~ cauchy(0,2);
-
-    // likelihood function for the collective benefit model
-    for (k in 1:N_group) {
-        collective_mu[k] = col_a + col_b_confidence * local_confidence[k];
+        k_gro ~ binomial_logit(n_gro, gtheta);
+        k_ind ~ binomial_logit(n_ind, itheta);
+        
+        // here comes the collective benefit stuff
+        
+        
+        for (k in 1:N_group) {
+        collective_mu[k] = col_a + col_b * type_diff[k];
         collective_benefit[k] ~ normal(collective_mu[k], collective_sigma);
-    }
+        }
+        
+        col_a ~ normal(1,1);
+        col_b ~ normal(0,1);
+        collective_sigma ~ cauchy(0,2);
+        
 }
+    

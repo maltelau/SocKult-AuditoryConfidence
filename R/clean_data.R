@@ -1,5 +1,4 @@
 
-rm(list = ls())
 library(tidyverse)
 library(purrr)
 library(lubridate)

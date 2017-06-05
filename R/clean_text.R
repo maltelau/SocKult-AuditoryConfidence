@@ -9,13 +9,13 @@
 # 1. get word frequencies from telephone corpus
 # 2. calculate per-word entropy
 # 3. compute power spectrum overlap
-
-
-
+# ...
+# I gave up on this .. had to build a n-gram language model and all, too much for the scale of this project
 
 
 # also: think about what to do with
 # https://github.com/zonination/perceptions/blob/master/README.md
+# yeah ... later
 
 library(tidyverse)
 library(purrr)
@@ -176,10 +176,10 @@ rqa_self <- letters %>%
     group_by(participant, group) %>%
     do({
         RQA <- crqa(.$letter, .$letter, delay=1, embed=2, radius=0, rescale=0, normalize=0, mindiagline=2, minvertline=2)
-        data_frame(self_rr = RQA$RR, self_l = RQA$L, self_entr = RQA$ENTR, RP = list(RQA$RP))}) %>%
+        data_frame(self_rr = RQA$RR, self_l = RQA$L, self_entr = RQA$ENTR, RP = list(RQA$RP))
+        }) %>%
     group_by(group) %>%
-    summarise_at(starts_with("self"), mean) %>%
-    select(-participant)
+    summarise_at(vars(starts_with("self")), mean)
 
 rqa_alignment <- letters %>%
     group_by(group) %>%
@@ -201,9 +201,9 @@ rqa_synergy <- letters %>%
     })
 
 # plot the recurrence plots
-purrr::map(rqa_self$RP, image)
-purrr::map(rqa_alignment$RP, image)
-purrr::map(rqa_synergy$RP, image)
+# purrr::map(rqa_self$RP, image)
+# purrr::map(rqa_alignment$RP, image)
+# purrr::map(rqa_synergy$RP, image)
 
 
 
@@ -215,8 +215,8 @@ text_data <- with_alignment_1 %>%
     full_join(tokens_types) %>%
     full_join(cosine_word_set) %>%
     full_join(rqa_self)%>%
-    full_join(rqa_alignment)%>%
-    full_join(rqa_synergy)
+    full_join(select(rqa_alignment, -RP))%>%
+    full_join(select(rqa_synergy, -RP))
 
 
 write.csv(text_data, "data/text_data.csv", row.names = F)
@@ -226,27 +226,59 @@ write.csv(text_data, "data/text_data.csv", row.names = F)
 
 # global aligment plots
 
+
+## all dyads
 with_scheme %>%
     group_by(group, participant) %>%
     count(conf, sort=T) %>%
     group_by(conf) %>%
     mutate(total_n = sum(n)) %>%
     group_by(group) %>%
-    mutate(n = n / sum(n)) %>%
-    ggplot(aes(reorder(conf, desc(total_n)), n, fill=factor(participant))) +
+    mutate(n = n / sum(n),
+           conf = reorder(conf, desc(total_n))) %>%
+    ggplot(aes(conf, n, fill=factor(participant))) +
     geom_bar(stat="identity") +
-    facet_wrap(~group, labeller = "label_both") +
+    facet_wrap(~group, labeller = "label_both", nrow=3) +
     theme_classic() +
     guides(fill = "none") +
     theme(axis.text.x = element_text(angle = 90),
-          strip.background = element_blank()) +
-    labs(x = "Confidence expression (Type)",
+          strip.background = element_blank(),
+          panel.grid.major.y = element_line(linetype = "dashed", size = .15)) +
+    labs(x = "Confidence-expression type",
          y = "Percentage Tokens",
          title = "Confidence Expressions",
          subtitle = "Distributions of confidence expressions as percentage of all confidence expressions by that group\nEach participant in a separate colour") +
     scale_y_continuous(labels = percent)
 
+ggsave("plots/conf_expressions.png")
 
+
+## only one group
+with_scheme %>%
+    group_by(group, participant) %>%
+    count(conf, sort=T) %>%
+    group_by(conf) %>%
+    mutate(total_n = sum(n)) %>%
+    group_by(group) %>%
+    mutate(n = n / sum(n),
+           conf = reorder(conf, desc(total_n))) %>%
+    filter(group == 7) %>%
+    ggplot(aes(conf, n, fill=factor(participant))) +
+    geom_bar(stat="identity") +
+    facet_wrap(~group, labeller = "label_both") +
+    theme_classic() +
+    guides(fill = "none") +
+    scale_x_discrete(drop=FALSE) +
+    theme(axis.text.x = element_text(angle = 90),
+          strip.background = element_blank(),
+          panel.grid.major.y = element_line(linetype = "dashed", size = .15)) +
+    labs(x="", #x = "Confidence-expression type",
+         y = "Percentage Tokens",
+         title = "Global convergence of confidence Expressions",
+         subtitle = "Percentage of all confidence expressions by that group") +
+    scale_y_continuous(labels = percent)
+
+ggsave("plots/conf_expressions_group_7.png")
 
 # correlations
 

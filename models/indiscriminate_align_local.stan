@@ -16,7 +16,7 @@ data{
     vector[N] intensity;
     
     // collective benefit model
-    vector[N_group] local_indiscriminate;
+    vector[N_group] local_alignment_all;
     
 }
 
@@ -108,7 +108,7 @@ model{
         
         
         for (k in 1:N_group) {
-        collective_mu[k] = col_a + col_b * local_indiscriminate[k];
+        collective_mu[k] = col_a + col_b * local_alignment_all[k];
         collective_benefit[k] ~ normal(collective_mu[k], collective_sigma);
         }
         

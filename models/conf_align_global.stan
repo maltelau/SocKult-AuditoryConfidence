@@ -16,7 +16,7 @@ data{
     vector[N] intensity;
     
     // collective benefit model
-    vector[N_group] global_confidence;
+    vector[N_group] global_alignment_confidence;
     
 }
 
@@ -108,7 +108,7 @@ model{
         
         
         for (k in 1:N_group) {
-        collective_mu[k] = col_a + col_b * global_confidence[k];
+        collective_mu[k] = col_a + col_b * global_alignment_confidence[k];
         collective_benefit[k] ~ normal(collective_mu[k], collective_sigma);
         }
         

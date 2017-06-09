@@ -39,6 +39,8 @@ add_predictive_posterior <- function(dataset, model) {
 }
 
 my_waic <- function(pred_post) {
+    
+    
     pred_post %>%
         mutate(
             lik_gro = purrr::pmap(list(k_gro, n_gro, theta_gro), function(k,n,theta){
@@ -71,8 +73,23 @@ dataset = data_frame(
     vowel = full.data$vowel)
 
 do_waic <- function(model, data = dataset) {
-    add_predictive_posterior(data, model) %>%
+    
+    tmp_ <- add_predictive_posterior(data, model) %>%
         my_waic()
+    
+    tryCatch({
+        pos <- extract.samples(self_l)$col_b
+    }, error = function(e) {
+        try(pos <- extract.samples(self_l)$col_b1)
+    })
+
+    if (exists("pos")) {
+        pri <- rnorm(length(pos))
+        tmp_ <- tmp_ %>%
+            mutate(BF01 = savage_dickey(pos, pri))
+    }
+    
+    return(tmp_)
 }
 ```
 
@@ -123,17 +140,23 @@ waic_list <- model_list %>%
     ) %>%
     select(-filename) %>%
     # round the table to 3 digits
-    mutate_at(vars(-model), function(co) {round(co, 3)})
+    mutate_at(vars(-model), function(co) {round(co, 3)}) %>%
+    select(-BF01, -lppd)
 
 # load("models/waic.Rdata")
 waic_list
-save("waic_list", file="models/waic.Rdata")
+# save("waic_list", file="models/waic.Rdata")
+# write.csv(waic_list, "models/waic_list.csv")
+waic_list %>% mutate(model = str_replace_all(model, "_", " "),
+                     model = str_replace_all(model, "and", "+")) %>%
+    write.csv("models/waic_list.csv")
 ```
 
 
 
 ```{r, echo=F}
-post <- extract.samples(self_l_and_local_confidence)
+load("models/self_l_and_local_confidence.model")
+post <- extract.samples(conf_align_local)
 n_ <- length(post$collective_benefit)
 
 post$collective_benefit %>%
@@ -143,13 +166,13 @@ post$collective_benefit %>%
     ggplot(aes(value, group=Group)) +
     geom_density() +
     labs(x = "Collective Benefit", y="",
-         title = "Posteriors for collective benefit ~ self l + local confidence\nprior = normal(normal(1,1), cauchy(0,2))\nEach line is a dyad") +
+         title = "Posteriors for collective benefit ~ Local Confidence Alignment\nEach line is a dyad") +
     theme_tufte() +
     theme(axis.text.y = element_blank(),
           axis.ticks.y = element_blank())#+
     # coord_cartesian(ylim=c(1.1, 20)) 
 
-# ggsave("plots/collective_benefit_3.png")
+ggsave("plots/collective_benefit_3.png")
 
 
 ```
@@ -160,17 +183,23 @@ post$collective_benefit %>%
 
 ```{r}
 
-pred.post.data <- extract.samples(self_l_x_cosine_conf_local_full) %>%
+pred.post.data <- extract.samples(self_entr) %>%
     as.data.frame() %>%
     as_data_frame() %>%
-    select(col_a : col_b7)
+    select(col_b)
 
 pred.post.data %>%
     gather() %>%
+    mutate(wh = "posterior") %>%
+    rbind(with(., data.frame(key = key,
+                     value = rnorm(length(key)),
+                     wh = rep("prior", length(key))))) %>%
+
     # group_by()
-    ggplot(aes(value, fill=key)) +
+    ggplot(aes(value, fill=wh)) +
     geom_density(alpha=.4, colour=NA) +
-    facet_wrap(~ key, scales="free")
+    facet_wrap(~ key) #+
+    # coord_cartesian(xlim = c(-0.2, 1.2))
 
 # pairs(pred.post.data)
 # pairs(self_l_x_cosine_conf_local_full, pars = c("col_a", "col_b1", "col_b2", "col_b3", "col_b4", "col_b5", "col_b6", "col_b7"))
@@ -276,7 +305,7 @@ pred %>%
 ```
 
 ```{r another model plot}
-posterior = extract.samples(self_l_x_local_confidence2)
+posterior = extract.samples(self_l_cosine_local_confidence)
 
 pred <- expand.grid(local_alignment_confidence = seq(-2,2,length.out = 10),
           self.l = seq(-2,2, 2),
@@ -390,7 +419,7 @@ pred.plot.data <- dataset %>%
     data_grid(group = unique(group),
               intensity = unique(intensity),
               vowel = unique(vowel)) %>%
-    add_predictive_posterior(self_l_and_local_confidence) %>%
+    add_predictive_posterior(conf_align_local) %>%
     gather("who", "pred", theta_ind, theta_gro) %>%
     mutate(who = ifelse(who == "theta_ind", "Individual", "Group")) %>%
     group_by(intensity, vowel, who) %>%
@@ -406,39 +435,40 @@ mutate(individual, who="Individual") %>%
     rbind(mutate(group, who="Group")) %>%
 
     ggplot(aes(intensity, prop, colour=who)) +
-    # geom_line(stat="summary", fun.y=mean) +
-    geom_jitter(aes(size=n), height=.01, width=.4, alpha=.2) +
+    geom_line(aes(ymin=ymin,y=y,ymax=ymax, colour=who), data=pred.plot.data) +
+    # geom_jitter(aes(size=n), height=.01, width=.4, alpha=.2) +
+    geom_point(aes(group = str_c(group), size=n), position=position_jitterdodge(jitter.height=.05, dodge.width = 3, jitter.width=0)) +
     geom_ribbon(aes(ymin=ymin,y=y,ymax=ymax, fill=who), data=pred.plot.data, colour=NA, alpha=.1) +
     # geom_ribbon(stat="summary", fun.data=mean_cl_boot, alpha=.3) +
     # geom_violin(aes(group=group.intensity)) +
     facet_wrap(~ vowel) +
     labs(x = "Stimulus intensity (dB)", y = "Proportion correct answers",
-         title = "Points are per participant\nShaded errors are model predictions (89% HPDI)\ncollective benefit ~ chat predicability + local confidence alignment") +
-    guides(colour = guide_legend(title=element_blank())) +
+         title = "Model predictions", subtitle="Line and shaded areas are average across groups (mean +- 89% HPDI)\nRaw data: One point per participant per vowel per intensity\nCollective benefit ~ Local Confidence Alignment") +
+    guides(colour = guide_legend(title=element_blank()),
+           fill = guide_legend(title=element_blank())) +
     scale_size(range=c(1,4)) +
     theme_tufte() +
     scale_y_continuous(labels=percent) +
     scale_x_continuous(breaks = seq(5,26, 3)) +
     theme(axis.ticks.x = element_blank())
 
-ggsave("plots/pred_self_l_local_conf.png")
+ggsave("plots/raw_pred_local_conf_alignment.png")
 ```
 
 
 ```{r different kind of predictive plot}
-load("models/self_l_and_local_confidence.model")
-post <- extract.samples(self_l_and_local_confidence)
-expand.grid(local_confidence_alignment = seq(-3, 3, 3),
-            self_l = seq(-3,3,3)) %>%
-    mutate(collective_benefit = purrr::map2(local_confidence_alignment, self_l, function(loc,sel) {
-        mu = post$col_a + post$col_b1 * sel + post$col_b2 * loc
+load("models/self_l.model")
+post <- extract.samples(self_l)
+expand.grid(self_l = seq(-3, 3, 3)) %>%
+    mutate(collective_benefit = purrr::map(self_l, function(par) {
+        mu = post$col_a + post$col_b * par
         rnorm(length(mu), mu, post$collective_sigma)
     })) %>%
     unnest() %>%
-    mutate(local_confidence_alignment = factor(local_confidence_alignment)) %>%
-    ggplot(aes(collective_benefit, colour=local_confidence_alignment)) +
+    mutate(self_l = factor(self_l)) %>%
+    ggplot(aes(collective_benefit, colour=self_l)) +
     geom_density() +
-    facet_grid(self_l ~ ., labeller=label_both) +
+    # facet_grid(self_l ~ ., labeller=label_both) +
     coord_cartesian(xlim = c(.8, 1.25)) +
     # guides(colour = guide_legend(title = element_blank())) +
     labs(x = "Collective Benefit", y = "Predictive posterior",
@@ -457,17 +487,15 @@ preddata <- dataset %>%
 
 
 
-plotdata2 <- expand.grid(local_confidence_alignment = seq(-3, 3, 3),
-            self_l = seq(-3,3,3),
+plotdata2 <- expand.grid(self_l = seq(-3,3,3),
             intensity = unique(individual$intensity),
             group = 1:9,
             vowel = 1:4) %>%
-    mutate(collective_benefit = purrr::map2(local_confidence_alignment, self_l, function(loc,sel) {
-        mu = post$col_a + post$col_b1 * sel + post$col_b2 * loc
+    mutate(collective_benefit = purrr::map(self_l, function(par) {
+        mu = post$col_a + post$col_b * par
         rnorm(length(mu), mu, post$collective_sigma)
     })) %>%
-    mutate(local_confidence_alignment = factor(local_confidence_alignment),
-           theta_ind = purrr::pmap(list(group, intensity, vowel), function(gro,int,vow, coll) {
+    mutate(theta_ind = purrr::pmap(list(group, intensity, vowel), function(gro,int,vow, coll) {
                
                 iA = post$ia + post$ia_vowel[,vow] + post$ia_group[,gro]
                 iB = post$ib + post$ib_vowel[,vow] + post$ib_group[,gro]
@@ -484,7 +512,7 @@ plotdata2 <- expand.grid(local_confidence_alignment = seq(-3, 3, 3),
                 })) %>%
     gather("who", "pred", theta_ind, theta_gro) %>%
     mutate(who = ifelse(who == "theta_ind", "Individual", "Group")) %>%
-    group_by(intensity, who, self_l, local_confidence_alignment) %>%
+    group_by(intensity, who, self_l) %>%
     summarise(pred = list(unlist(pred))) %>%
     mutate(hp = purrr::map(pred, ~median_hpdi(., prob=.5))) 
 
@@ -494,17 +522,19 @@ plotdata2 %>%
     unnest(pred) %>%
     ungroup() %>%
     filter(complete.cases(pred)) %>%
+    mutate(self_l = factor(self_l, labels = c("Low self-consistency L (-3 SD)", "Mean self-consistency", "High self-consistency L (+3 SD)"))) %>%
     ggplot(aes(intensity, colour = who, fill = who, group = stringr::str_c(who, intensity))) +
     # geom_line(aes(y=y)) +
     # geom_ribbon(aes(ymin=ymin, ymax=ymax), alpha=.2, colour=NA) +
     geom_violin(aes(y=pred), alpha=.3, position = position_identity(), scale = "width") +
-    facet_grid(self_l ~ local_confidence_alignment, labeller = label_both) +
+    facet_grid(self_l ~ .) +
     labs(x = "Intensity (dB)", y = "Proportion correct answers",
          title = "Predictive posterior density\ncollective_benefit ~ self l + local conf align") +
     guides(fill = guide_legend(title = element_blank()),
            colour = guide_legend(title = element_blank()))
     
 
+# ggsave("plots/pred_post_self_l.png")
 ```
 
 ```{r intercept advanced plot}
@@ -553,19 +583,75 @@ plotdata2 %>%
     unnest(pred) %>%
     ungroup() %>%
     filter(complete.cases(pred)) %>%
+    mutate(intensity = factor(intensity)) %>%
     ggplot(aes(intensity, colour = who, fill = who, group = stringr::str_c(who, intensity))) +
     # geom_line(aes(y=y)) +
     # geom_ribbon(aes(ymin=ymin, ymax=ymax), alpha=.2, colour=NA) +
     geom_violin(aes(y=pred), alpha=.3, position = position_identity(), scale = "width") +
     # facet_grid(self_l ~ local_confidence_alignment, labeller = label_both) +
     labs(x = "Intensity (dB)", y = "Proportion correct answers",
-         title = "Predictive posterior density\ncollective_benefit ~ 1") +
+         title = "Predictive posterior density\nNull Model (intercept only)") +
     guides(fill = guide_legend(title = element_blank()),
-           colour = guide_legend(title = element_blank()))
+           colour = guide_legend(title = element_blank())) +
+    scale_y_continuous(labels = percent)
 ```
 
 
+
+
+
+```{r pred plot 444043}
+# load("models/conf_align_local.model")
+# post <- extract.samples(conf_align_local)
+# expand.grid(par = seq(-3, 3, 3)) %>%
+#     mutate(collective_benefit = purrr::map(par, function(par) {
+#         mu = post$col_a + post$col_b * par
+#         rnorm(length(mu), mu, post$collective_sigma)
+#     })) %>%
+#     unnest() %>%
+#     mutate(par = factor(par)) %>%
+#     ggplot(aes(collective_benefit, colour=par)) +
+#     geom_density() +
+#     # facet_grid(self_l ~ ., labeller=label_both) +
+#     coord_cartesian(xlim = c(.8, 1.25)) +
+#     # guides(colour = guide_legend(title = element_blank())) +
+#     labs(x = "Collective Benefit", y = "Predictive posterior",
+#          title = "Predictive posterior for collective benefit in one of the simpler models\ncollective benefit ~ chat similarity + local confidence alignment")
+    
+# ggsave("plots/pred_coll_self_l_local_conf.png")
+
+
+## next level
+
+
+# ggsave("plots/pred_post_self_l.png")
+```
 # comparing the four models from optimally interacting ..
+
+
+```{r predictive posteriors plots for all}
+
+```
+
+
+```{r coefficient table}
+model_list %>%
+    filter(!model %in% c("intercept")) %>%
+    # filter(model == "align_l") %>%
+    plyr::adply(1, function(ro) {
+        beta = extract.samples(get(ro$model))$col_b
+        hp = map_hpdi(beta, prob=.95)
+        # try(plot_predictive(get(ro$model), ro$model))
+        
+        data_frame(Estimate = hp$y,
+                   `Lower 95%` = hp$ymin,
+                   `Upper 95%` = hp$ymax)
+    }) %>% select(-filename) %>%
+    arrange(desc(Estimate)) %>%
+    mutate_at(vars(-model), function(co) {round(co, 4)}) %>%
+    write.csv("models/estimate_table.csv")
+    
+```
 
 
 
@@ -577,3 +663,14 @@ plotdata2 %>%
 # (s1 + s2) / (2 ^ 1/2)
 # direct signal sharing
 # (s1 ^ 2 + s2 ^ 2) ^ 1/2
+
+
+
+```{r}
+# bayes factor
+
+
+
+```
+
+    

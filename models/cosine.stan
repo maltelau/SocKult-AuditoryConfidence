@@ -16,7 +16,7 @@ data{
     vector[N] intensity;
     
     // collective benefit model
-    vector[N_group] cosine_words;
+    vector[N_group] cosine_word_set;
     
 }
 
@@ -108,7 +108,7 @@ model{
         
         
         for (k in 1:N_group) {
-        collective_mu[k] = col_a + col_b * cosine_words[k];
+        collective_mu[k] = col_a + col_b * cosine_word_set[k];
         collective_benefit[k] ~ normal(collective_mu[k], collective_sigma);
         }
         

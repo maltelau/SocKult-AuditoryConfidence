@@ -1,11 +1,15 @@
 ## Run all models
 
+library(tidyverse)
+library(stringr)
+library(rstan)
 
-iter = 2000
+# set stan settings
+iter = 5000
 chains = 4
 cores = 4
 
-
+# load data
 best_individual <- read.csv("data/best_individual.csv")
 group <- read.csv("data/group.csv") %>% mutate(prop = k / n)
 text <- read.csv("data/text_data.csv")
@@ -27,6 +31,30 @@ full.data <- list(
     c(text %>% select(-group) %>% mutate_all(function(x){scale(x)[,1]}))
 
 save("full.data", file = "data/full.data.Rdata")
+
+# look for all the .stan files in the models/ folder
+model_list = data.frame(filename = list.files(path = "models/", pattern = "*.stan")) #[1,] %>% data.frame(filename = .)
+
+print(model_list)
+
+# .. and compile those models that we don't already have
+plyr::a_ply(model_list, 1, function(model_name) {
+    model = stringr::str_sub(model_name[[1]], 1, -6)
+    if (file.exists(stringr::str_c("models/", model, ".model"))) {
+        print(paste0("Model already exists: ", model))
+        return(NULL)
+    }
+    print(paste0("Running model: ", model))
+    
+    assign(model, stan(
+        file = stringr::str_c("models/", model_name[[1]]),
+        data = full.data,
+        chains = chains, cores = cores, iter = iter, init = 0),
+        envir = globalenv())
+
+    save(list = c(model), file = stringr::str_c("models/", model, ".model"))
+})
+
 
 # intercept <- stan(
 #     file = "models/intercept.stan",

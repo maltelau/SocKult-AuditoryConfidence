@@ -16,7 +16,7 @@ data{
     vector[N] intensity;
     
     // collective benefit model
-    vector[N_group] local_confidence;
+    vector[N_group] local_alignment_confidence;
 }
 
 parameters{
@@ -41,7 +41,7 @@ parameters{
     real<lower=0> collective_benefit[N_group];
     real<lower=0> collective_sigma;
     real col_a;
-    real col_b_confidence;
+    real col_b;
     
 }
 
@@ -104,12 +104,12 @@ model{
     
     // priors for the collective benefit model
     col_a ~ normal(1,1);
-    col_b_confidence ~ normal(0,1);
+    col_b ~ normal(0,1);
     collective_sigma ~ cauchy(0,2);
 
     // likelihood function for the collective benefit model
     for (k in 1:N_group) {
-        collective_mu[k] = col_a + col_b_confidence * local_confidence[k];
+        collective_mu[k] = col_a + col_b * local_alignment_confidence[k];
         collective_benefit[k] ~ normal(collective_mu[k], collective_sigma);
     }
 }

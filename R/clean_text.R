@@ -148,7 +148,7 @@ with_alignment_3 <- with_scheme %>%
     summarise(global_alignment_confidence = max(n) / sum(n))
 
 
-# cosine distance between word sets
+# cosine similarity between word sets
 cosine_word_set <- words %>%
     group_by(group) %>%
     do({

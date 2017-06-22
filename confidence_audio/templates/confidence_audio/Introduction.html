@@ -1,0 +1,29 @@
+{% extends "global/Base.html" %}
+{% load staticfiles otree_tags %}
+
+{% block title %}
+    Introduction
+{% endblock %}
+
+{% block content %}
+
+    {% include Constants.instructions_template %}
+    
+    <p> Here are the vowels. The pronounciation might be slightly different than you're used to, so please acquaint youself with them now.</p>
+    <p> When the experiment starts, you will only hear each sound once. You can hear the benchmark as many times now, but not during the experiment. But you can always re-visit the instructions with the plus to the far right.</p>
+    
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <table>
+                {%  for vowel, sound in vowels %}
+                     <tr><td width="10%"><h4>{{ vowel|upper }}</h4></td>   <td>   <audio controls right="0px"><source src="/static/{{ sound }}" type="audio/wav"></audio></td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <p> If you've read and understood the introduction, and tested that the sound works, press next to start the game.</p>
+
+    {% next_button %}
+
+{% endblock %}

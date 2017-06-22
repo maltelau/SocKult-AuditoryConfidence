@@ -12,12 +12,21 @@ Keywords: social cognition; group performance; linguistic alignment; bayesian mo
 
 ### Index
 Most of the R code that was actuall used is in the R/ folder, but some of it is in the Analysis.Rmd file for now.
+
 In data/ the raw data is in Chat messages (accessed 2017-04-26).csv and confidence_audio (accessed 2017-04-26).csv and the other files are intermediate, tidied up data.
+
 model backup/ holds some models I decided to abandon (too complex for now with multiple predictors)
+
 model/ holds the stan models and some summary tables. This is also where R/run_models.R will store the samples in Rdata files ending in .model
+
 pilot data/ holds some data and initial look at that data from a pilot I ran with just four participants for a shorter time
+
 wav/ holds the stimulus sound files named `[vowel][intensity].wav`
+
 The excellently named odt and pdf file `Paper` obviously holds the paper I handed in ..
+
+confidence_audio/ has the otree app used to run the experiment
+
 and finally, codingscheme.txt has the regular expressions used to extract confidence expressions. I got this from by contacting Fusaroli as it was used in his 2012 paper.
 
 Fusaroli, R., Bahrami, B., Olsen, K., Roepstorff, A., Rees, G., Frith, C., & Tylén, K. (2012). Coming to terms: quantifying the benefits of linguistic coordination. Psychological science, 23(8), 931-939.

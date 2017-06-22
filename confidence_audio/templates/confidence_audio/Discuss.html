@@ -1,0 +1,29 @@
+{% extends "global/Base.html" %}
+{% load staticfiles otree_tags %}
+{% load otreechat %}
+
+{% block title %}
+    Discuss
+{% endblock %}
+
+
+{% block content %}
+
+    <p> Opinions disagree! You didn't agree which vowel you heard.
+        You answered <strong>{{ player.answer }}</strong> while your partner answered <strong>{{ player.get_partner.answer }}</strong>.</p>
+    <p> If you're not sure what to answer, make your best joint guess and move on.</p>
+    
+    {% chat channel=group.id_in_subsession nickname=player.role %}
+    
+    {% if player.control_consensus %}
+        {% formfield group.consensus with label="What is your joint decision?" %}
+    {% else %}
+        {% formfield group.ready with label="This round, the other player inputs your joint decision." %}
+    {% endif %}
+    
+    
+    {% next_button %}
+
+    {% include Constants.instructions_template %}
+
+{% endblock %}

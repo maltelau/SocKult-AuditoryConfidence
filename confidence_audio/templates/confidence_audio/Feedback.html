@@ -1,0 +1,23 @@
+{% extends "global/Base.html" %}
+{% load staticfiles otree_tags %}
+
+{% block title %}
+    Result
+{% endblock %}
+
+
+{% block content %}
+
+    {% autoescape off %}
+        <p>You were {{ player_correct }}</p>
+        <p>Your partner was {{ partner_correct }}</p>
+        {% if discussion %}
+            <p>The joint decision was {{ consensus_correct }}</p>
+        {% endif %}
+    {% endautoescape %}
+
+    {% next_button %}
+    
+    {% include Constants.instructions_template %}
+
+{% endblock %}

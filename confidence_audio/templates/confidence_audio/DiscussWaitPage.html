@@ -1,0 +1,18 @@
+{% extends 'otree/WaitPage.html' %}
+{% load staticfiles otree_tags %}
+{% load otreechat %}
+
+
+{% block title %}
+    {{ title_text }}
+{% endblock %}
+
+{% block content %}
+
+    {% chat channel=group.id_in_subsession nickname=player.role %}
+    
+    <br />
+    
+    {{ body_text }}
+    
+{% endblock %}

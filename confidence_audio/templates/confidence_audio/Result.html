@@ -1,0 +1,21 @@
+{% extends "global/Base.html" %}
+{% load staticfiles otree_tags %}
+
+{% block title %}
+    Your Choice - round {{ round_number }}
+{% endblock %}
+
+
+{% block content %}
+
+    <p> ### TODO: Present audio stim </p> 
+    
+    {% formfield player.answer with label=prompt %}
+    
+    <p>
+        {% next_button %}
+    </p>
+
+    {% include Constants.instructions_template %}
+
+{% endblock %}
